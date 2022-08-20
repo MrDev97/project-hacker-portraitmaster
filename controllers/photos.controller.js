@@ -1,4 +1,6 @@
 const Photo = require('../models/photo.model');
+const escapeHTML = require('../utils/escapeHTML');
+const validateEmail = require('../utils/validateEmail');
 
 /****** SUBMIT PHOTO ********/
 
@@ -6,6 +8,10 @@ exports.add = async (req, res) => {
   try {
     const { title, author, email } = req.fields;
     const file = req.files.file;
+
+    if (!validateEmail(email)) {
+      throw new Error('Wrong input!');
+    }
 
     if (title && author && email && file) {
       // if fields are not empty...
@@ -22,9 +28,9 @@ exports.add = async (req, res) => {
       }
 
       const newPhoto = new Photo({
-        title,
-        author,
-        email,
+        title: escapeHTML(title),
+        author: escapeHTML(author),
+        email: escapeHTML(email),
         src: fileName,
         votes: 0,
       });
