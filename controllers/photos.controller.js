@@ -1,4 +1,5 @@
 const Photo = require('../models/photo.model');
+const Voter = require('../models/voter.model');
 const escapeHTML = require('../utils/escapeHTML');
 const validateEmail = require('../utils/validateEmail');
 
@@ -59,11 +60,37 @@ exports.loadAll = async (req, res) => {
 exports.vote = async (req, res) => {
   try {
     const photoToUpdate = await Photo.findOne({ _id: req.params.id });
-    if (!photoToUpdate) res.status(404).json({ message: 'Not found' });
-    else {
-      photoToUpdate.votes++;
-      photoToUpdate.save();
-      res.send({ message: 'OK' });
+    const voterCheck = await Voter.findOne({ user: req.ip });
+
+    if (!voterCheck) {
+      const newVoter = new Voter({
+        user: req.ip,
+        votes: [photoToUpdate._id],
+      });
+      await newVoter.save();
+
+      res.send({ message: 'User & Vote Added' });
+    } else {
+      const voteCheck = await Voter.findOne({
+        $and: [{ user: req.ip }, { votes: photoToUpdate._id }],
+      });
+
+      if (voteCheck) res.status(409).json({ message: 'Voted already!' });
+      else {
+        const updatedVoter = await Voter.findOneAndUpdate(
+          { _id: voterCheck._id },
+          {
+            $push: {
+              votes: photoToUpdate._id,
+            },
+          }
+        );
+
+        photoToUpdate.votes++;
+        await photoToUpdate.save();
+
+        res.send({ message: 'Vote Added to User' });
+      }
     }
   } catch (err) {
     res.status(500).json(err);
